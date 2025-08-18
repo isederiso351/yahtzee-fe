@@ -1,0 +1,157 @@
+<div class="container mt-4">
+
+  <header class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="display-4">🎲 Yahtzee Online</h1>
+
+    <!-- Indicatore connessione -->
+    <div class="alert alert-sm mb-0 py-1 px-3"
+         [ngClass]="isConnected ? 'alert-success' : 'alert-warning'">
+      <i class="fas" [ngClass]="isConnected ? 'fa-wifi' : 'fa-wifi-slash'"></i>
+      {{ isConnected ? 'Connected' : 'Disconnected' }}
+    </div>
+  </header>
+
+  <!-- Form Crea Partita -->
+  <section class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0">
+        <i class="fas fa-plus-circle me-2"></i>
+        Crea Nuova Partita
+      </h5>
+    </div>
+    <div class="card-body">
+      <form (ngSubmit)="createGame()" #gameForm="ngForm" class="row g-3">
+        <div class="col-md-4">
+          <label for="maxPlayers" class="form-label">Numero Massimo Giocatori</label>
+          <input
+            type="number"
+            class="form-control"
+            id="maxPlayers"
+            [(ngModel)]="newGame.max_players"
+            name="maxPlayers"
+            required>
+        </div>
+
+        <div class="col-md-4">
+          <label for="bet" class="form-label">Puntata</label>
+          <input
+            type="number"
+            class="form-control"
+            id="bet"
+            [(ngModel)]="newGame.bet"
+            name="bet"
+            min="0"
+            step="1"
+            required>
+        </div>
+
+        <div class="col-md-4 d-flex align-items-end">
+          <button
+            type="submit"
+            class="btn btn-primary btn-lg w-100"
+            [disabled]="!gameForm.form.valid || loading">
+
+            @if (loading) {
+              <span class="spinner-border spinner-border-sm me-2"></span>
+            } @else {
+              <i class="fas fa-gamepad me-2"></i>
+            }
+            {{ loading ? 'Creando...' : 'Crea Partita' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Lista Partite -->
+  <section class="card shadow-sm">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="fas fa-list me-2"></i>
+        Partite Disponibili
+      </h5>
+      <span class="badge bg-light text-dark">{{ games.length }} partite</span>
+    </div>
+
+    <div class="card-body">
+      @if(loading && games.length === 0){
+      <!-- Loading -->
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary"></div>
+        <p class="mt-2 text-muted">Caricamento partite...</p>
+      </div>
+
+      }@else if(!loading && games.length === 0){
+      <!-- Empty state -->
+      <div class="text-center py-5">
+        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+        <h4 class="text-muted">Nessuna partita disponibile</h4>
+      </div>
+      }@else{
+      <!-- Griglia partite -->
+      <div class="row">
+        @for(game of games; track game.gameId){
+        <div class="col-lg-4 col-md-6 mb-3">
+
+          <!-- Card partita -->
+          <article class="card h-100 game-card"
+                   [class.border-success]="game.users.length < game.max_players">
+
+            <!-- Header card -->
+            <header class="card-header d-flex justify-content-between align-items-center">
+              <strong>Partita #{{ game.gameId }}</strong>
+              <span class="badge bg-warning text-dark">
+                <i class="fas fa-clock me-1"></i>
+                In Attesa
+              </span>
+            </header>
+
+            <!-- Info partita -->
+            <div class="card-body">
+              <p class="mb-2">
+                <i class="fas fa-crown text-warning me-1"></i>
+                <strong>Host:</strong> {{ game.host }}
+              </p>
+
+              <p class="mb-2">
+                <i class="fas fa-users me-1"></i>
+                <strong>Giocatori:</strong>
+                <span [class]="getPlayersClass(game)">
+                  {{ game.users.length }}/{{ game.max_players }}
+                </span>
+              </p>
+
+              <p class="mb-3">
+                <i class="fas fa-coins text-warning me-1"></i>
+                <strong>Puntata:</strong>
+                <span class="text-success fw-bold">{{ game.bet }}</span>
+              </p>
+            </div>
+
+            <!-- Azione -->
+            <footer class="card-footer bg-transparent">
+              <button
+                class="btn btn-success w-100"
+                (click)="joinGame(game.gameId)"
+                [disabled]="loading || game.users.length >= game.max_players"
+                [class.btn-secondary]="game.users.length >= game.max_players">
+
+                @if(loading){
+                <span class="spinner-border spinner-border-sm me-2"></span>
+                }@else if(game.users.length < game.max_players){
+                <i class="fas fa-sign-in-alt me-2"></i>
+                }@else{
+                <i class="fas fa-lock me-2"></i>
+                }
+
+                {{ game.users.length >= game.max_players ? 'Partita Piena' : 'Entra nella Partita' }}
+              </button>
+            </footer>
+          </article>
+        </div>
+        }
+      </div>
+      }
+    </div>
+  </section>
+</div>
