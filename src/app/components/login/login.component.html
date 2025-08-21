@@ -1,0 +1,50 @@
+<div class="login-container">
+  <div class="login-card">
+    <!-- Header -->
+    <div class="login-header text-center mb-4">
+      <div class="logo mb-3">
+        <i class="fas fa-dice fa-3x text-primary"></i>
+      </div>
+      <h1 class="h3 mb-3 fw-bold">Yahtzee Online</h1>
+      <p class="text-muted">Accedi per iniziare a giocare</p>
+    </div>
+
+    <!-- Login Form -->
+    <div class="login-form">
+
+      <!-- Keycloak Login Button -->
+      <button
+        type="button"
+        class="btn btn-primary btn-lg w-100 mb-3"
+        (click)="loginWithKeycloak()"
+        [disabled]="loading">
+
+        @if(loading){
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        }@else{
+        <i class="fas fa-sign-in-alt me-2"></i>
+        }
+        {{ loading ? 'Reindirizzamento...' : 'Accedi con Keycloak' }}
+      </button>
+
+      <div class="divider mb-3"></div>
+
+    <!-- Footer -->
+    <div class="login-footer text-center mt-4">
+      <small class="text-muted">
+        Non hai un account?
+        <a href="#" class="text-decoration-none">Registrati qui</a>
+      </small>
+    </div>
+  </div>
+
+  <!-- Background decoration -->
+  <div class="background-decoration">
+    <div class="dice dice-1"><i class="fas fa-dice-one"></i></div>
+    <div class="dice dice-2"><i class="fas fa-dice-two"></i></div>
+    <div class="dice dice-3"><i class="fas fa-dice-three"></i></div>
+    <div class="dice dice-4"><i class="fas fa-dice-four"></i></div>
+    <div class="dice dice-5"><i class="fas fa-dice-five"></i></div>
+    <div class="dice dice-6"><i class="fas fa-dice-six"></i></div>
+  </div>
+</div>
