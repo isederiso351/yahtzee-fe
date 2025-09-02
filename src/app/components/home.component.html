@@ -70,7 +70,20 @@
         <i class="fas fa-list me-2"></i>
         Partite Disponibili
       </h5>
-      <span class="badge bg-light text-dark">{{ games.length }} partite</span>
+      <div class="d-flex align-items-center gap-3">
+        <!-- Paginazione info -->
+        <small class="text-light">
+          Pagina {{ currentPage + 1 }} di {{ totalPages }}
+        </small>
+        <!-- Refresh button -->
+        <button
+          class="btn btn-outline-light btn-sm"
+          (click)="refresh()"
+          [disabled]="loading"
+          title="Ricarica">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+      </div>
     </div>
 
     <div class="card-body">
@@ -151,6 +164,40 @@
         </div>
         }
       </div>
+        <!-- Paginazione Classica -->
+        @if(totalPages > 1) {
+          <nav aria-label="Game pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+              <!-- Prev Button -->
+              <li class="page-item" [class.disabled]="currentPage === 0 || loading">
+                <button
+                  class="page-link"
+                  (click)="goToPrevPage()"
+                  [disabled]="currentPage === 0 || loading">
+                  <i class="fas fa-chevron-left"></i>
+                </button>
+              </li>
+
+              <!-- Next Button -->
+              <li class="page-item" [class.disabled]="!hasNextPage || loading">
+                <button
+                  class="page-link"
+                  (click)="goToNextPage()"
+                  [disabled]="!hasNextPage || loading">
+                  <i class="fas fa-chevron-right"></i>
+                </button>
+              </li>
+            </ul>
+          </nav>
+
+          <!-- Page info -->
+          <div class="text-center mt-2">
+            <small class="text-muted">
+              Pagina {{ currentPage + 1 }} di {{ totalPages }}
+            </small>
+          </div>
+        }
+
       }
     </div>
   </section>

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { GameService } from '../services/game.service';
 import { WebSocketService } from '../services/websocket.service';
-import { GameInfoDTO, GameStatus, GameEventMessage, GameEventType, GameRequest } from '../models/game.models';
+import {GameInfoDTO, GameStatus, GameEventMessage, GameEventType, GameRequest, Page} from '../models/game.models';
 
 @Component({
   selector: 'app-home',
@@ -19,6 +19,13 @@ export class HomeComponent implements OnInit, OnDestroy {
   loading = false;
   isConnected = false;
 
+  // Paginazione
+  currentPage = 0;
+  pageSize = 12;
+  totalElements = 0;
+  totalPages = 0;
+  hasNextPage = false;
+
   newGame: GameRequest = {
     max_players: 4,
     bet: 0
@@ -26,6 +33,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   // Gestione sottoscrizioni
   private subscriptions: Subscription[] = [];
+  private currentPageData: Page<GameInfoDTO> | null = null;
 
   constructor(
     private gameService: GameService,
@@ -34,7 +42,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
 
-    this.loadAvailableGames();
+    this.loadAvailableGames(0, true);
     this.initializeWebSocket();
     this.subscribeToWebSocketEvents();
   }
@@ -71,14 +79,27 @@ export class HomeComponent implements OnInit, OnDestroy {
   /**
    * Carica le partite disponibili (status = WAITING)
    */
-  private loadAvailableGames(): void {
+  private loadAvailableGames(page: number, reset: boolean = false): void {
     this.loading = true;
+    if (reset) {
+      this.games = [];
+      this.currentPage = 0;
+    }
 
-    const gamesSub = this.gameService.getGames(GameStatus.WAITING).subscribe({
-      next: (page) => {
-        this.games = page.content;
+    const gamesSub = this.gameService.getGames(GameStatus.WAITING, page, this.pageSize).subscribe({
+      next: (pageData) => {
+        this.currentPageData = pageData;
+        this.totalElements = pageData.totalElements;
+        this.totalPages = pageData.totalPages;
+        this.hasNextPage = !pageData.last;
+
+
+        this.games = pageData.content;
+
+        this.currentPage = page;
         this.loading = false;
-        console.log('Loaded', this.games.length, 'available games');
+
+        console.log(`Loaded page ${page + 1}/${this.totalPages} (${pageData.content.length} games)`);
       },
       error: (error) => {
         console.error('Error loading games:', error);
@@ -99,8 +120,15 @@ export class HomeComponent implements OnInit, OnDestroy {
       case GameEventType.CREATED:
         // Nuova partita creata -> aggiungila se è WAITING
         if (event.game && event.game.status === GameStatus.WAITING) {
-          this.games.unshift(event.game);
+          if(this.currentPage===0) {
+            this.games.unshift(event.game);
+            if(this.games.length > this.pageSize) {
+              this.games.pop();
+            }
+          }
           console.log('Added new game:', event.game.gameId);
+          this.totalElements++;
+          this.totalPages = Math.ceil(this.totalElements / this.pageSize);
         }
         break;
 
@@ -110,20 +138,31 @@ export class HomeComponent implements OnInit, OnDestroy {
           const index = this.games.findIndex(g => g.gameId === event.game!.gameId);
 
           if (event.game.status === GameStatus.WAITING) {
-            // Ancora in attesa -> aggiorna
+            // Ancora in attesa
             if (index >= 0) {
+              // Aggiorna esistente
               this.games[index] = event.game;
               console.log('Updated game:', event.game.gameId);
-            } else {
-              // Non era nella lista -> aggiungila
+            } else if (this.currentPage === 0) {
+              // Se non è nella lista e siamo in prima pagina, aggiungila
               this.games.unshift(event.game);
-              console.log('Added updated game:', event.game.gameId);
+              if (this.games.length > this.pageSize) {
+                this.games.pop();
+              }
+              console.log('Added updated game to first page:', event.game.gameId);
             }
           } else {
-            // Non più in attesa (iniziata) -> rimuovi dalla lista
+            // Non più in attesa - rimuovi dalla lista
             if (index >= 0) {
               this.games.splice(index, 1);
+              this.totalElements--;
+              this.totalPages = Math.ceil(this.totalElements / this.pageSize);
               console.log('Game started, removed from list:', event.game.gameId);
+
+              // Se la pagina è vuota e non è l'ultima, carica la prossima
+              if (this.games.length === 0 && this.hasNextPage) {
+                this.loadAvailableGames(this.currentPage, false);
+              }
             }
           }
         }
@@ -132,11 +171,46 @@ export class HomeComponent implements OnInit, OnDestroy {
       case GameEventType.DELETED:
         // Partita cancellata -> rimuovi
         if (event.gameId) {
-          this.games = this.games.filter(g => g.gameId !== event.gameId);
-          console.log('Removed deleted game:', event.gameId);
+          const index = this.games.findIndex(g => g.gameId === event.gameId);
+          if (index >= 0) {
+            this.games.splice(index, 1);
+            this.totalElements--;
+            this.totalPages = Math.ceil(this.totalElements / this.pageSize);
+            console.log('Removed deleted game:', event.gameId);
+
+            // Se la pagina è vuota e non è l'ultima, carica la prossima
+            if (this.games.length === 0 && this.hasNextPage) {
+              this.loadAvailableGames(this.currentPage, false);
+            }
+          }
         }
         break;
     }
+  }
+
+  /**
+   * Va alla pagina successiva
+   */
+  goToNextPage(): void {
+    if (this.hasNextPage && !this.loading) {
+      this.loadAvailableGames(this.currentPage + 1, false);
+    }
+  }
+
+  /**
+   * Va alla pagina precedente
+   */
+  goToPrevPage(): void {
+    if (this.currentPage > 0 && !this.loading) {
+      this.loadAvailableGames(this.currentPage - 1, false);
+    }
+  }
+
+  /**
+   * Ricarica dall'inizio
+   */
+  refresh(): void {
+    this.loadAvailableGames(0, true);
   }
 
   /**
@@ -196,4 +270,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (ratio >= 0.8) return 'text-warning fw-bold';
     return 'text-success fw-bold';
   }
+
+  protected readonly Math = Math;
 }
