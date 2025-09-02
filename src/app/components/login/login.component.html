@@ -33,7 +33,13 @@
     <div class="login-footer text-center mt-4">
       <small class="text-muted">
         Non hai un account?
-        <a href="#" class="text-decoration-none">Registrati qui</a>
+        <button
+          type="button"
+          class="btn btn-link p-0 text-decoration-none fw-semibold"
+          (click)="registerWithKeycloak()"
+          [disabled]="loading">
+          Registrati qui
+        </button>
       </small>
     </div>
   </div>
@@ -47,4 +53,5 @@
     <div class="dice dice-5"><i class="fas fa-dice-five"></i></div>
     <div class="dice dice-6"><i class="fas fa-dice-six"></i></div>
   </div>
+</div>
 </div>

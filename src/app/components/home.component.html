@@ -9,6 +9,15 @@
       <i class="fas" [ngClass]="isConnected ? 'fa-wifi' : 'fa-wifi-slash'"></i>
       {{ isConnected ? 'Connected' : 'Disconnected' }}
     </div>
+
+    <!-- Logout Button -->
+    <button
+      class="btn btn-outline-danger"
+      (click)="logout()"
+      title="Esci dall'applicazione">
+      <i class="fas fa-sign-out-alt me-2"></i>
+      Logout
+    </button>
   </header>
 
   <!-- Form Crea Partita -->
@@ -149,9 +158,7 @@
                 [disabled]="loading || game.users.length >= game.max_players"
                 [class.btn-secondary]="game.users.length >= game.max_players">
 
-                @if(loading){
-                <span class="spinner-border spinner-border-sm me-2"></span>
-                }@else if(game.users.length < game.max_players){
+                @if(game.users.length < game.max_players){
                 <i class="fas fa-sign-in-alt me-2"></i>
                 }@else{
                 <i class="fas fa-lock me-2"></i>

@@ -82,9 +82,10 @@ export class AuthService {
   /**
    * Imposta il token di autenticazione
    */
-  setToken(token: string): void {
-    localStorage.setItem('access_token', token);
-    this.tokenSubject.next(token);
+  setTokens(access_token: string, id_token: string): void {
+    localStorage.setItem('access_token', access_token);
+    localStorage.setItem('id_token', id_token);
+    this.tokenSubject.next(access_token);
     this.loadCurrentUser();
   }
 
@@ -92,13 +93,21 @@ export class AuthService {
    * Effettua il logout
    */
   logout(): void {
-    localStorage.removeItem('access_token');
-    this.tokenSubject.next(null);
-    this.currentUserSubject.next(null);
+
 
     const keycloakLogoutUrl = 'http://localhost:8081/realms/yahtzee-realm/protocol/openid-connect/logout';
     const redirectUri = encodeURIComponent(window.location.origin);
-    window.location.href = `${keycloakLogoutUrl}?redirect_uri=${redirectUri}`;
+    const idToken = localStorage.getItem('id_token');
+
+    this.clearLocalAuth()
+
+    let logoutUrl = `${keycloakLogoutUrl}?post_logout_redirect_uri=${redirectUri}`;
+
+    if (idToken) {
+      logoutUrl += `&id_token_hint=${idToken}`;
+    }
+
+    window.location.href = logoutUrl;
   }
 
   /**
@@ -152,5 +161,36 @@ export class AuthService {
     } catch {
       return true;
     }
+  }
+
+  register(): void {
+    const keycloakRegisterUrl = 'http://localhost:8081/realms/yahtzee-realm/protocol/openid-connect/registrations';
+    const clientId = 'yahtzee-fe-client';
+    const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback');
+    const responseType = 'code';
+    const scope = 'openid profile email';
+
+    const registerUrl = `${keycloakRegisterUrl}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}`;
+
+    console.log('Redirecting to Keycloak registration:', registerUrl);
+    window.location.href = registerUrl;
+  }
+
+  /**
+   * Pulisce l'autenticazione locale
+   */
+  private clearLocalAuth(): void {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('id_token'); // Rimuovi anche l'ID token
+    this.tokenSubject.next(null);
+    this.currentUserSubject.next(null);
+  }
+
+  /**
+   * Logout silenzioso (solo locale, senza redirect)
+   */
+  silentLogout(): void {
+    console.log('Silent logout - clearing local auth only');
+    this.clearLocalAuth()
   }
 }

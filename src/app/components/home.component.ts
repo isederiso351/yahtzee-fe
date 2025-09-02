@@ -5,6 +5,7 @@ import { Subscription } from 'rxjs';
 import { GameService } from '../services/game.service';
 import { WebSocketService } from '../services/websocket.service';
 import {GameInfoDTO, GameStatus, GameEventMessage, GameEventType, GameRequest, Page} from '../models/game.models';
+import {AuthService} from '../services/auth.service';
 
 @Component({
   selector: 'app-home',
@@ -37,7 +38,8 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   constructor(
     private gameService: GameService,
-    private webSocketService: WebSocketService
+    private webSocketService: WebSocketService,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -258,7 +260,13 @@ export class HomeComponent implements OnInit, OnDestroy {
       }
     });
 
+
+
     this.subscriptions.push(joinSub);
+  }
+
+  logout(): void {
+    this.authService.logout();
   }
 
   /**

@@ -22,4 +22,12 @@ export class LoginComponent {
     this.loading = true;
     this.authService.login();
   }
+
+  /**
+   * Redirect alla registrazione Keycloak
+   */
+  registerWithKeycloak(): void {
+    this.loading = true;
+    this.authService.register();
+  }
 }
