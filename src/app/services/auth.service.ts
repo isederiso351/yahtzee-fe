@@ -1,16 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { User } from '../models/game.models';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
   private tokenSubject = new BehaviorSubject<string | null>(null);
 
-  public currentUser$ = this.currentUserSubject.asObservable();
   public token$ = this.tokenSubject.asObservable();
 
   constructor(private http: HttpClient) {
@@ -18,7 +15,6 @@ export class AuthService {
     const savedToken = localStorage.getItem('access_token');
     if (savedToken && !this.isTokenExpired(savedToken)) {
       this.tokenSubject.next(savedToken);
-      this.loadCurrentUser();
     }
   }
 
@@ -28,13 +24,6 @@ export class AuthService {
   isAuthenticated(): boolean {
     const token = this.tokenSubject.value;
     return !!token && !this.isTokenExpired(token);
-  }
-
-  /**
-   * Ottiene l'utente corrente
-   */
-  getCurrentUser(): User | null {
-    return this.currentUserSubject.value;
   }
 
   /**
@@ -86,7 +75,6 @@ export class AuthService {
     localStorage.setItem('access_token', access_token);
     localStorage.setItem('id_token', id_token);
     this.tokenSubject.next(access_token);
-    this.loadCurrentUser();
   }
 
   /**
@@ -108,28 +96,6 @@ export class AuthService {
     }
 
     window.location.href = logoutUrl;
-  }
-
-  /**
-   * Carica le informazioni dell'utente corrente dal token JWT
-   */
-  private loadCurrentUser(): void {
-    const token = this.tokenSubject.value;
-    if (token) {
-      try {
-        const payload = this.decodeJWTPayload(token);
-        const user: User = {
-          id: payload.sub,
-          email: payload.email,
-          name: payload.preferred_username || payload.name,
-          credit: 0 // Questo dovrebbe venire da una chiamata API se necessario
-        };
-        this.currentUserSubject.next(user);
-      } catch (error) {
-        console.error('Error decoding JWT token:', error);
-        this.logout();
-      }
-    }
   }
 
   /**
@@ -183,7 +149,6 @@ export class AuthService {
     localStorage.removeItem('access_token');
     localStorage.removeItem('id_token'); // Rimuovi anche l'ID token
     this.tokenSubject.next(null);
-    this.currentUserSubject.next(null);
   }
 
   /**

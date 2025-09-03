@@ -32,15 +32,6 @@ export interface GameEventMessage {
 }
 
 
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  credit: number;
-}
-
-
 export interface Page<T> {
   content: T[];
   pageable: {
