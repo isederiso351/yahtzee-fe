@@ -33,6 +33,20 @@ export class AuthService {
     return this.tokenSubject.value;
   }
 
+  getCurrentUserName(){
+    const token = this.getCurrentToken();
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+
+        return payload.preferred_username;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
   /**
    * Inizia il processo di login con Keycloak
    */

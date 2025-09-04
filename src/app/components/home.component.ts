@@ -4,9 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { GameService } from '../services/game.service';
 import { WebSocketService } from '../services/websocket.service';
-import {GameInfoDTO, GameStatus, GameEventMessage, GameEventType, GameRequest, Page} from '../models/game.models';
+import {GameInfoDTO, GameStatus, GameHomeEventMessage, GameEventType, GameRequest, Page} from '../models/game.models';
 import {AuthService} from '../services/auth.service';
 import {UserService} from '../services/user.service';
+import {Router} from '@angular/router';
 
 @Component({
   selector: 'app-home',
@@ -44,7 +45,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     private gameService: GameService,
     private webSocketService: WebSocketService,
     private authService: AuthService,
-    private userService: UserService
+    private userService: UserService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -118,7 +120,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   /**
    * Gestisce gli eventi WebSocket in tempo reale
    */
-  private handleGameEvent(event: GameEventMessage): void {
+  private handleGameEvent(event: GameHomeEventMessage): void {
     console.log('Handling game event:', event);
 
     switch (event.type) {
@@ -230,19 +232,18 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.loading = true;
 
     const createSub = this.gameService.createGame(this.newGame).subscribe({
-      next: () => {
+      next: (createdGame) => {
         console.log('Game created successfully');
         this.loading = false;
 
         // Reset del form
         this.newGame = { max_players: 4, bet: 0 };
 
-        this.loadUserCredit();
+        this.router.navigate(['/game',createdGame.gameId])
       },
       error: (error) => {
         console.error('Error creating game:', error);
         this.loading = false;
-        // TODO: Mostra messaggio di errore all'utente
       }
     });
 
@@ -260,14 +261,11 @@ export class HomeComponent implements OnInit, OnDestroy {
         console.log('Joined game successfully:', gameId);
         this.loading = false;
         this.loadUserCredit();
-
-        // TODO: Naviga alla schermata Lobby
-        // this.router.navigate(['/lobby', gameId]);
+        this.router.navigate(['/game', gameId]);
       },
       error: (error) => {
         console.error('Error joining game:', error);
         this.loading = false;
-        // TODO: Mostra messaggio di errore all'utente
       }
     });
 

@@ -48,6 +48,7 @@ export class AuthCallbackComponent implements OnInit {
       error: (error) => {
         console.error('Login failed:', error);
         this.router.navigate(['/login']);
+        this.authService.logout();
       }
     });
   }

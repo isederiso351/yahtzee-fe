@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Client, IMessage } from '@stomp/stompjs';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { GameEventMessage } from '../models/game.models';
+import {GameHomeEventMessage, GameRoomEventMessage} from '../models/game.models';
 import SockJS from 'sockjs-client';
 
 @Injectable({
@@ -10,18 +10,23 @@ import SockJS from 'sockjs-client';
 export class WebSocketService {
   private stompClient: Client;
 
-  // Subject per gli eventi di gioco (Home e Lobby)
-  private gameEventsSubject = new BehaviorSubject<GameEventMessage | null>(null);
+  // Subject per gli eventi di gioco (Home)
+  private gameHomeEventsSubject = new BehaviorSubject<GameHomeEventMessage | null>(null);
+
+  // Subject per gli eventi di specifiche partite
+  private gameRoomEventsSubject = new BehaviorSubject<GameRoomEventMessage | null>(null);
 
   // Subject per lo stato della connessione
   private connectionStateSubject = new BehaviorSubject<boolean>(false);
+
+  private currentGameSubscription: any;
 
   constructor(){
     this.stompClient = new Client({
       webSocketFactory: () => new SockJS('/ws'),
 
       debug: (str) => {
-        console.log('🔌 WebSocket Debug:', str);
+        console.log('WebSocket Debug:', str);
       },
 
       // Configurazione riconnessione automatica
@@ -34,7 +39,7 @@ export class WebSocketService {
     this.stompClient.onConnect = (frame) => {
       console.log('Connected to WebSocket:', frame);
       this.connectionStateSubject.next(true);
-      this.subscribeToGameEvents();
+      this.subscribeToGameHomeEvents();
     };
 
     // Callback quando si disconnette
@@ -66,34 +71,44 @@ export class WebSocketService {
   }
 
 
-  private subscribeToGameEvents(): void {
+  private subscribeToGameHomeEvents(): void {
     this.stompClient.subscribe('/topic/games', (message: IMessage) => {
       try {
-        const gameEvent: GameEventMessage = JSON.parse(message.body);
+        const gameEvent: GameHomeEventMessage = JSON.parse(message.body);
         console.log('Received game event:', gameEvent);
-        this.gameEventsSubject.next(gameEvent);
+        this.gameHomeEventsSubject.next(gameEvent);
       } catch (error) {
         console.error('Error parsing game event:', error);
       }
     });
   }
 
-  getGameEvents(): Observable<GameEventMessage | null> {
-    return this.gameEventsSubject.asObservable();
+  subscribeToGameRoom(gameId: number): Observable<GameRoomEventMessage | null> {
+    // Unsubscribe dalla partita precedente se c'è
+    this.unsubscribeFromCurrentGame();
+
+    // Subscribe alla nuova partita
+    const topic = `/topic/game/${gameId}`;
+    this.currentGameSubscription = this.stompClient.subscribe(topic, (message) => {
+      const event: GameRoomEventMessage = JSON.parse(message.body);
+      this.gameRoomEventsSubject.next(event);
+    });
+
+    return this.gameRoomEventsSubject.asObservable();
+  }
+
+  unsubscribeFromCurrentGame(): void {
+    if (this.currentGameSubscription) {
+      this.currentGameSubscription.unsubscribe();
+      this.currentGameSubscription = null;
+    }
+  }
+
+  getGameEvents(): Observable<GameHomeEventMessage | null> {
+    return this.gameHomeEventsSubject.asObservable();
   }
 
   getConnectionState(): Observable<boolean> {
     return this.connectionStateSubject.asObservable();
-  }
-
-  isConnected(): boolean {
-    return this.stompClient.active;
-  }
-
-  reconnect(): void {
-    this.disconnect();
-    setTimeout(() => {
-      this.connect();
-    }, 1000);
   }
 }

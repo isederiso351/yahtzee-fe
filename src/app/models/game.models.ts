@@ -7,7 +7,10 @@ export enum GameStatus {
 export enum GameEventType {
   CREATED = 'CREATED',
   UPDATED = 'UPDATED',
-  DELETED = 'DELETED'
+  DELETED = 'DELETED',
+  JOINED = 'PLAYER_JOINED',
+  STARTED = 'GAME_STARTED',
+  ROLLED = 'DICE_ROLLED'
 }
 
 
@@ -25,10 +28,17 @@ export interface GameRequest {
   bet: number;
 }
 
-export interface GameEventMessage {
+export interface GameHomeEventMessage {
   type: GameEventType;
   game?: GameInfoDTO;
   gameId?: number;
+}
+
+export interface GameRoomEventMessage {
+  type: GameEventType;
+  game?: GameInfoDTO;
+  playerName?: string;
+  diceResult?: string;
 }
 
 

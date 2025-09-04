@@ -1,0 +1,227 @@
+<div class="container mt-4">
+
+  @if (loading && !game) {
+    <!-- Loading iniziale -->
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
+      <h4>Caricamento partita...</h4>
+      <p class="text-muted">Game ID: {{ gameId }}</p>
+    </div>
+
+  } @else if (game) {
+
+    <!-- Header della partita -->
+    <header class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="display-5">🎲 Partita #{{ game.gameId }}</h1>
+        <p class="text-muted mb-0">
+          Host: <strong>{{ game.host }}</strong>
+          @if (isHost) {
+            <span class="badge bg-success ms-2">Sei tu!</span>
+          }
+        </p>
+      </div>
+    </header>
+
+    @if (notifications.length > 0) {
+      <div class="alert alert-info alert-dismissible fade show mb-3">
+        @for (notification of notifications; track notification) {
+          <div>{{ notification }}</div>
+        }
+      </div>
+    }
+    <!-- Informazioni partita -->
+    <section class="row mb-4">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0">
+              <i class="fas fa-info-circle me-2"></i>
+              Dettagli Partita
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col-4">
+                <div class="border-end">
+                  <h3 class="text-warning mb-1">{{ game.bet }}</h3>
+                  <small class="text-muted">Puntata</small>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="border-end">
+                  <h3 class="text-primary mb-1">{{ game.users.length }}</h3>
+                  <small class="text-muted">Giocatori</small>
+                </div>
+              </div>
+              <div class="col-4">
+                <h3 class="text-success mb-1">{{ game.max_players }}</h3>
+                <small class="text-muted">Max</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <!-- Status della partita -->
+        <div class="card">
+          <div class="card-header"
+               [class.bg-warning]="game.status === 'WAITING'"
+               [class.bg-success]="game.status === 'IN_PROGRESS'"
+               [class.bg-secondary]="game.status === 'COMPLETED'"
+               [class.text-white]="true">
+            <h5 class="mb-0">
+              <i class="fas fa-flag me-2"></i>
+              Status
+            </h5>
+          </div>
+          <div class="card-body text-center">
+            @if (game.status === 'WAITING') {
+              <h4 class="text-warning">
+                <i class="fas fa-clock me-2"></i>
+                In Attesa
+              </h4>
+              <p class="text-muted">Aspettando altri giocatori...</p>
+
+            } @else if (game.status === 'IN_PROGRESS') {
+              <h4 class="text-success">
+                <i class="fas fa-play me-2"></i>
+                In Corso
+              </h4>
+              <p class="text-muted">La partita è iniziata!</p>
+
+            } @else if (game.status === 'COMPLETED') {
+              <h4 class="text-secondary">
+                <i class="fas fa-flag-checkered me-2"></i>
+                Completata
+              </h4>
+              <p class="text-muted">Partita terminata</p>
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lista giocatori -->
+    <section class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+          <i class="fas fa-users me-2"></i>
+          Giocatori ({{ game.users.length }}/{{ game.max_players }})
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          @for (player of game.users; track player) {
+            <div class="col-md-6 col-lg-3 mb-3">
+              <div class="card bg-light">
+                <div class="card-body text-center py-3">
+                  <i class="fas fa-user fa-2x text-primary mb-2"></i>
+                  <h6 class="mb-1">{{ player }}</h6>
+                  @if (player === game.host) {
+                    <span class="badge bg-warning">
+                      <i class="fas fa-crown"></i> Host
+                    </span>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Slot vuoti -->
+          @for (empty of getEmptySlots(); track $index) {
+            <div class="col-md-6 col-lg-3 mb-3">
+              <div class="card bg-light border-dashed">
+                <div class="card-body text-center py-3">
+                  <i class="fas fa-user-plus fa-2x text-muted mb-2"></i>
+                  <h6 class="text-muted mb-1">In attesa...</h6>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- Azioni -->
+    <section class="card">
+      <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">
+          <i class="fas fa-gamepad me-2"></i>
+          Azioni
+        </h5>
+      </div>
+      <div class="card-body">
+
+        @if (game.status === 'WAITING') {
+          <!-- Partita in attesa -->
+          <div class="text-center">
+
+            @if (isHost) {
+              <!-- Pulsanti Host -->
+              <div class="d-flex gap-3 justify-content-center">
+                <button class="btn btn-success btn-lg"
+                        (click)="startGame()"
+                        [disabled]="loading || !canStartGame">
+                    <i class="fas fa-play me-2"></i>
+                    Inizia Partita
+                </button>
+              </div>
+
+            } @else {
+              <!-- Pulsanti Giocatore normale -->
+              <div class="text-center">
+                <p class="mb-3">
+                  <i class="fas fa-clock me-2"></i>
+                  In attesa che <strong>{{ game.host }}</strong> avvii la partita
+                </p>
+              </div>
+            }
+          </div>
+
+        } @else if (game.status === 'IN_PROGRESS') {
+          <!-- Partita in corso -->
+          <div class="text-center">
+            <div class="alert alert-info">
+              <h4>🎲 Dice Battle in corso!</h4>
+              <p class="mb-0">I dadi sono stati lanciati. Controlla i tuoi crediti per vedere se hai vinto!</p>
+            </div>
+
+            <button class="btn btn-primary" (click)="goHome()">
+              <i class="fas fa-home me-2"></i>
+              Torna alla Home
+            </button>
+          </div>
+
+        } @else if (game.status === 'COMPLETED') {
+          <!-- Partita completata -->
+          <div class="text-center">
+            <div class="alert alert-success">
+              <h4>🏆 Partita Completata!</h4>
+              <p class="mb-0">La battaglia dei dadi è terminata. Controlla i tuoi crediti!</p>
+            </div>
+
+            <button class="btn btn-primary btn-lg" (click)="goHome()">
+              <i class="fas fa-home me-2"></i>
+              Torna alla Home
+            </button>
+          </div>
+        }
+      </div>
+    </section>
+
+  } @else {
+    <!-- Errore caricamento -->
+    <div class="text-center py-5">
+      <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+      <h4>Partita non trovata</h4>
+      <p class="text-muted">La partita potrebbe essere stata cancellata o non esiste.</p>
+      <button class="btn btn-primary" (click)="goHome()">
+        <i class="fas fa-home me-2"></i>
+        Torna alla Home
+      </button>
+    </div>
+  }
+
+</div>

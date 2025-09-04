@@ -20,8 +20,8 @@ export class GameService {
     return this.http.get<Page<GameInfoDTO>>(this.baseUrl, { params });
   }
 
-  createGame(gameRequest: GameRequest): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/create`, gameRequest);
+  createGame(gameRequest: GameRequest): Observable<GameInfoDTO> {
+    return this.http.post<GameInfoDTO>(`${this.baseUrl}/create`, gameRequest);
   }
 
 
@@ -32,5 +32,13 @@ export class GameService {
 
   leaveGame(gameId: number): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${gameId}/leave`, {});
+  }
+
+  startGame(gameId: number): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${gameId}/start`, {});
+  }
+
+  getGame(gameId: number): Observable<GameInfoDTO> {
+    return this.http.get<GameInfoDTO>(`${this.baseUrl}/${gameId}`);
   }
 }
