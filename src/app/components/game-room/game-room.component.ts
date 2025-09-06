@@ -151,12 +151,13 @@ export class GameRoomComponent implements OnInit, OnDestroy {
   /**
    * Gestisce il completamento della partita
    */
-  private handleGameCompleted(): void {
-    console.log('Game completed!');
-    // Mostra risultati per 5 secondi, poi torna alla home
-    setTimeout(() => {
-      this.router.navigate(['/']);
-    }, 5000);
+  private handleGameCompleted(event: GameRoomEventMessage): void {
+    if (event.game) {
+      this.game = event.game;
+      this.showResults = true;
+      this.diceAnimation = false;
+      this.showNotification(`🎉 ${event.game.winner} ha vinto la partita!`);
+    }
   }
 
   /**

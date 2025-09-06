@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Client, IMessage } from '@stomp/stompjs';
 import { BehaviorSubject, Observable } from 'rxjs';
-import {GameHomeEventMessage, GameRoomEventMessage} from '../models/game.models';
+import { GameRoomEventMessage} from '../models/game.models';
 import SockJS from 'sockjs-client';
 
 @Injectable({
@@ -11,7 +11,7 @@ export class WebSocketService {
   private stompClient: Client;
 
   // Subject per gli eventi di gioco (Home)
-  private gameHomeEventsSubject = new BehaviorSubject<GameHomeEventMessage | null>(null);
+  private gameHomeEventsSubject = new BehaviorSubject<void>(undefined);
 
   // Subject per gli eventi di specifiche partite
   private gameRoomEventsSubject = new BehaviorSubject<GameRoomEventMessage | null>(null);
@@ -72,20 +72,16 @@ export class WebSocketService {
 
 
   private subscribeToGameHomeEvents(): void {
-    this.stompClient.subscribe('/topic/games', (message: IMessage) => {
-      try {
-        const gameEvent: GameHomeEventMessage = JSON.parse(message.body);
-        console.log('Received game event:', gameEvent);
-        this.gameHomeEventsSubject.next(gameEvent);
-      } catch (error) {
-        console.error('Error parsing game event:', error);
-      }
+    this.stompClient.subscribe('/topic/games', (_) => {
+        console.log('Received game event');
+        this.gameHomeEventsSubject.next();
     });
   }
 
-  subscribeToGameRoom(gameId: number): Observable<GameRoomEventMessage | null> {
+  subscribeToGameRoomEvents(gameId: number): Observable<GameRoomEventMessage | null> {
     // Unsubscribe dalla partita precedente se c'è
     this.unsubscribeFromCurrentGame();
+    this.gameRoomEventsSubject.next(null);
 
     // Subscribe alla nuova partita
     const topic = `/topic/game/${gameId}`;
@@ -104,7 +100,7 @@ export class WebSocketService {
     }
   }
 
-  getGameEvents(): Observable<GameHomeEventMessage | null> {
+  getGameHomeEvents(): Observable<void> {
     return this.gameHomeEventsSubject.asObservable();
   }
 
