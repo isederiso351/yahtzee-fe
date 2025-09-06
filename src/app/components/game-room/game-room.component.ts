@@ -5,7 +5,7 @@ import {Subscription} from 'rxjs';
 import {GameService} from '../../services/game.service';
 import {WebSocketService} from '../../services/websocket.service';
 import {AuthService} from '../../services/auth.service';
-import {GameEventType, GameInfoDTO, GameRoomEventMessage} from '../../models/game.models';
+import {GameEventType, GameInfoDTO, GameRoomEventMessage, GameStatus} from '../../models/game.models';
 
 @Component({
   selector: 'app-game-room',
@@ -24,6 +24,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
   isHost = false;
   canStartGame = false;
 
+  // Stato dei dadi
+  diceAnimation = false;
+  showResults = false;
+
+  currentUsername: string|null = null;
+
   notifications: string[] = [];
 
   private subscriptions: Subscription[] = [];
@@ -38,6 +44,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.gameId = +this.route.snapshot.params['id'];
+    this.notifications = [];
 
     if (!this.gameId) {
       this.router.navigate(['/']);
@@ -68,7 +75,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         }
 
         this.game = response;
-
+        this.currentUsername = this.authService.getCurrentUserName()
         this.checkIfHost();
         this.checkCanStartGame();
         this.loading = false;
@@ -88,8 +95,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
    * Controlla se l'utente corrente è l'host
    */
   private checkIfHost(): void {
-    const currentUser = this.authService.getCurrentUserName()
-    this.isHost = this.game?.host === currentUser;
+    this.isHost = this.game?.host === this.currentUsername;
   }
 
   /**
@@ -104,7 +110,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
    * Si sottoscrive agli eventi della partita
    */
   private subscribeToGameEvents(): void {
-    const gameEventsSub = this.webSocketService.subscribeToGameRoom(this.gameId).subscribe(event => {
+    const gameEventsSub = this.webSocketService.subscribeToGameRoomEvents(this.gameId).subscribe(event => {
       if (event) {
         this.handleGameEvent(event);
       }
@@ -118,33 +124,32 @@ export class GameRoomComponent implements OnInit, OnDestroy {
    */
   private handleGameEvent(event: GameRoomEventMessage): void {
     console.log('Game room received event:', event);
+    if(event.game){
+      this.game = event.game;
+    }
 
-    switch (event.type) {
-      case GameEventType.JOINED:
-        if (event.game) {
-          this.game = event.game;
-          this.checkCanStartGame()
+    if(event.type === GameEventType.ROLLED){
+      this.handleDiceRolled(event);
+    }else if (event.type === GameEventType.COMPLETED){
+      this.handleGameCompleted(event);
+    }
+  }
 
-        }
-        break;
+  private handleDiceRolled(event: GameRoomEventMessage): void {
+    if (event.game) {
+      this.game = event.game;
+      this.showResults = false;
 
-      case GameEventType.ROLLED:
-        if (event.game) {
-          this.game = event.game;
-          //this.showDiceResults(event.playerName, event.diceResult);
-        }
-        break;
+      // Inizia l'animazione dei dadi
+      this.diceAnimation = true;
+      this.showNotification(`Tiro ${event.game.currentRoll} - I dadi stanno girando...`);
 
-      case GameEventType.STARTED:
-        if (event.game) {
-          this.game = event.game;
-          this.showNotification('La partita è iniziata!');
-          //this.startGameAnimation();
-        }
-        break;
-
-      default:
-        console.log('Unknown game room event:', event.type);
+      // Dopo 2 secondi mostra i risultati
+      setTimeout(() => {
+        this.diceAnimation = false;
+        this.showResults = true;
+        this.showDiceResults(event.game!.currentDiceResults!);
+      }, 2000);
     }
   }
 
@@ -157,6 +162,23 @@ export class GameRoomComponent implements OnInit, OnDestroy {
       this.showResults = true;
       this.diceAnimation = false;
       this.showNotification(`🎉 ${event.game.winner} ha vinto la partita!`);
+    }
+  }
+
+  private showDiceResults(results: { [username: string]: number }): void {
+    const resultsText = Object.entries(results)
+      .map(([user, value]) => `${user}: ${value}`)
+      .join(', ');
+
+    const maxValue = Math.max(...Object.values(results));
+    const winners = Object.entries(results)
+      .filter(([, value]) => value === maxValue)
+      .map(([user]) => user);
+
+    if (winners.length === 1) {
+      this.showNotification(`Risultati: ${resultsText}. ${winners[0]} ha il punteggio più alto!`);
+    } else {
+      this.showNotification(`Risultati: ${resultsText}. Pareggio! Nuovo tiro in arrivo...`);
     }
   }
 
@@ -220,17 +242,26 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
     this.notifications.unshift(message);
 
-    // Mantieni solo le ultime 3
-    if (this.notifications.length > 3) {
+    // Mantieni solo le ultime 5
+    if (this.notifications.length >5 ) {
       this.notifications = this.notifications.slice(0, 3);
     }
-
-    // Rimuovi dopo 4 secondi
-    setTimeout(() => {
-      const index = this.notifications.indexOf(message);
-      if (index !== -1) {
-        this.notifications.splice(index, 1);
-      }
-    }, 4000);
   }
+
+  /**
+   * Ottiene l'icona del dado basata sul valore
+   */
+  getDiceIcon(value: number): string {
+    const diceIcons = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+    return diceIcons[value - 1] || '?';
+  }
+
+  /**
+   * Controlla se un giocatore è tra quelli attivi
+   */
+  isPlayerActive(playerName: string): boolean {
+    return this.game?.activePlayersInRound?.includes(playerName) ?? true;
+  }
+
+  protected readonly GameStatus = GameStatus;
 }

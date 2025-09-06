@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { GameService } from '../services/game.service';
 import { WebSocketService } from '../services/websocket.service';
-import {GameInfoDTO, GameStatus, GameHomeEventMessage, GameEventType, GameRequest, Page} from '../models/game.models';
+import {GameInfoDTO, GameStatus, GameEventType, GameRequest, Page} from '../models/game.models';
 import {AuthService} from '../services/auth.service';
 import {UserService} from '../services/user.service';
 import {Router} from '@angular/router';
@@ -77,10 +77,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.subscriptions.push(connectionSub);
 
     // Eventi di gioco
-    const gameEventsSub = this.webSocketService.getGameEvents().subscribe(event => {
-      if (event) {
-        this.handleGameEvent(event);
-      }
+    const gameEventsSub = this.webSocketService.getGameHomeEvents().subscribe(_ => {
+      this.loadAvailableGames(this.currentPage);
     });
     this.subscriptions.push(gameEventsSub);
   }
@@ -115,87 +113,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
 
     this.subscriptions.push(gamesSub);
-  }
-
-  /**
-   * Gestisce gli eventi WebSocket in tempo reale
-   */
-  private handleGameEvent(event: GameHomeEventMessage): void {
-    console.log('Handling game event:', event);
-
-    switch (event.type) {
-      case GameEventType.CREATED:
-        if(event.game) {
-          this.handleGameCreated(event.game)
-        }
-        break;
-
-      case GameEventType.UPDATED:
-        if (event.game) {
-          this.handleGameUpdated(event.game)
-        }
-        break;
-
-      case GameEventType.DELETED:
-        // Partita cancellata -> rimuovi
-        if (event.gameId) {
-          this.handleGameDeleted(event.gameId);
-        }
-        break;
-    }
-  }
-
-  private handleGameCreated(game:GameInfoDTO){
-    // Nuova partita creata -> aggiungila se è WAITING
-    if (game && game.status === GameStatus.WAITING) {
-      if(this.currentPage===0) {
-        this.games.unshift(game);
-        if(this.games.length > this.pageSize) {
-          this.games.pop();
-        }
-      }
-      console.log('Added new game:',game.gameId);
-      this.totalElements++;
-      this.totalPages = Math.ceil(this.totalElements / this.pageSize);
-    }
-  }
-
-  private handleGameUpdated(game: GameInfoDTO): void {
-
-    const index = this.games.findIndex(g => g.gameId === game!.gameId);
-
-    if (game.status === GameStatus.WAITING) {
-      // Ancora in attesa
-      if (index >= 0) {
-        // Aggiorna esistente
-        this.games[index] = game;
-        console.log('Updated game:', game.gameId);
-      } else if (this.currentPage === 0) {
-        // Se non è nella lista e siamo in prima pagina, aggiungila
-        this.games.unshift(game);
-        if (this.games.length > this.pageSize) {
-          this.games.pop();
-        }
-        console.log('Added updated game to first page:', game.gameId);
-      }
-    } else {
-      this.handleGameDeleted(game.gameId);
-    }
-  }
-
-  private handleGameDeleted(gameId: number): void {
-    const index = this.games.findIndex(g => g.gameId === gameId);
-    if (index >= 0) {
-      this.games.splice(index, 1);
-      this.totalElements--;
-      this.totalPages = Math.ceil(this.totalElements / this.pageSize);
-      console.log('Removed deleted game:', gameId);
-
-      // Se la pagina è vuota e non è l'ultima, carica la prossima
-      if (this.games.length === 0 && this.hasNextPage) {
-        this.loadAvailableGames(this.currentPage, false);
-      }
-    }
   }
 
 

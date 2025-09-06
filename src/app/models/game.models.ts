@@ -5,12 +5,10 @@ export enum GameStatus {
 }
 
 export enum GameEventType {
-  CREATED = 'CREATED',
-  UPDATED = 'UPDATED',
-  DELETED = 'DELETED',
   JOINED = 'PLAYER_JOINED',
   STARTED = 'GAME_STARTED',
-  ROLLED = 'DICE_ROLLED'
+  ROLLED = 'DICE_ROLLED',
+  COMPLETED = 'GAME_COMPLETED'
 }
 
 
@@ -21,6 +19,10 @@ export interface GameInfoDTO {
   users: string[];
   max_players: number;
   bet: number;
+  currentRoll?: number;
+  currentDiceResults?: {[username:string]:number};
+  activePlayersInRound?: string[];
+  winner?: string;
 }
 
 export interface GameRequest {
@@ -28,17 +30,9 @@ export interface GameRequest {
   bet: number;
 }
 
-export interface GameHomeEventMessage {
-  type: GameEventType;
-  game?: GameInfoDTO;
-  gameId?: number;
-}
-
 export interface GameRoomEventMessage {
   type: GameEventType;
   game?: GameInfoDTO;
-  playerName?: string;
-  diceResult?: string;
 }
 
 
