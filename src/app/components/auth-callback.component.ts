@@ -40,7 +40,7 @@ export class AuthCallbackComponent implements OnInit {
     this.authService.handleAuthCallback(code).subscribe({
       next: (response) => {
         // Salva il token
-        this.authService.setTokens(response.access_token, response.id_token);
+        this.authService.setTokens(response.access_token, response.id_token, response.refresh_token);
         console.log('Login successful');
         // Redirect alla home
         this.router.navigate(['/']);

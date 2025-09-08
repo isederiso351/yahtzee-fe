@@ -234,7 +234,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
    * Controlla se un giocatore è tra quelli attivi
    */
   isPlayerActive(playerName: string): boolean {
-    console.log("activePlayers",this.game?.activePlayers)
     if(!this.game?.activePlayers){
       return true;
     }

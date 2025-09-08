@@ -1,20 +1,27 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable } from 'rxjs';
+import {BehaviorSubject, catchError, Observable, of, tap} from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private tokenSubject = new BehaviorSubject<string | null>(null);
 
-  public token$ = this.tokenSubject.asObservable();
+  private tokenSubject = new BehaviorSubject<string | null>(null);
+  private refreshTokenSubject = new BehaviorSubject<string | null>(null);
+  private refreshTimer:any;
+
+  private keycloakBaseUrl="http://localhost:8081"
 
   constructor(private http: HttpClient) {
     // Carica il token salvato al bootstrap
     const savedToken = localStorage.getItem('access_token');
+    const savedRefreshToken = localStorage.getItem('refresh_token');
+
     if (savedToken && !this.isTokenExpired(savedToken)) {
       this.tokenSubject.next(savedToken);
+      this.refreshTokenSubject.next(savedRefreshToken);
+      this.scheduleTokenRefresh(savedToken);
     }
   }
 
@@ -51,7 +58,7 @@ export class AuthService {
    * Inizia il processo di login con Keycloak
    */
   login(): void {
-    const keycloakUrl = 'http://localhost:8081/realms/yahtzee-realm/protocol/openid-connect/auth';
+    const keycloakUrl = `${this.keycloakBaseUrl}/realms/yahtzee-realm/protocol/openid-connect/auth`;
     const clientId = 'yahtzee-fe-client';
     const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback');
     const responseType = 'code';
@@ -67,7 +74,7 @@ export class AuthService {
    * Gestisce il callback di autenticazione dopo il redirect da Keycloak
    */
   handleAuthCallback(code: string): Observable<any> {
-    const tokenUrl = 'http://localhost:8081/realms/yahtzee-realm/protocol/openid-connect/token';
+    const tokenUrl = `${this.keycloakBaseUrl}/realms/yahtzee-realm/protocol/openid-connect/token`;
 
     const body = new URLSearchParams();
     body.set('grant_type', 'authorization_code');
@@ -85,10 +92,15 @@ export class AuthService {
   /**
    * Imposta il token di autenticazione
    */
-  setTokens(access_token: string, id_token: string): void {
+  setTokens(access_token: string, id_token: string, refresh_token?:string): void {
     localStorage.setItem('access_token', access_token);
     localStorage.setItem('id_token', id_token);
+    if(refresh_token) {
+      localStorage.setItem('refresh_token', refresh_token);
+      this.refreshTokenSubject.next(refresh_token);
+    }
     this.tokenSubject.next(access_token);
+    this.scheduleTokenRefresh(access_token);
   }
 
   /**
@@ -97,7 +109,7 @@ export class AuthService {
   logout(): void {
 
 
-    const keycloakLogoutUrl = 'http://localhost:8081/realms/yahtzee-realm/protocol/openid-connect/logout';
+    const keycloakLogoutUrl = `${this.keycloakBaseUrl}/realms/yahtzee-realm/protocol/openid-connect/logout`;
     const redirectUri = encodeURIComponent(window.location.origin);
     const idToken = localStorage.getItem('id_token');
 
@@ -110,6 +122,73 @@ export class AuthService {
     }
 
     window.location.href = logoutUrl;
+  }
+
+  /**
+   * Rinnova il token usando il refresh token
+   */
+  refreshToken(): Observable<any> {
+    const refreshToken = this.refreshTokenSubject.value || localStorage.getItem('refresh_token');
+
+    if (!refreshToken) {
+      this.logout();
+      return of(null);
+    }
+
+    const tokenUrl = `${this.keycloakBaseUrl}/realms/yahtzee-realm/protocol/openid-connect/token`;
+
+    const body = new URLSearchParams();
+    body.set('grant_type', 'refresh_token');
+    body.set('client_id', 'yahtzee-fe-client');
+    body.set('refresh_token', refreshToken);
+
+    const headers = {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    };
+
+    return this.http.post<any>(tokenUrl, body.toString(), { headers }).pipe(
+      tap(response => {
+        // Aggiorna i token
+        this.setTokens(response.access_token, response.id_token, response.refresh_token);
+        console.log('Token refreshed successfully');
+      }),
+      catchError((error) => {
+        console.error('Token refresh failed:', error);
+        this.logout();
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Programma il rinnovo automatico del token
+   */
+  private scheduleTokenRefresh(token: string): void {
+    try {
+      const payload = this.decodeJWTPayload(token);
+
+      const expirationTime = payload.exp * 1000; // Converti in millisecondi
+      const now = Date.now();
+      const refreshTime = expirationTime - now - (5 * 60 * 1000); // Rinnova 5 minuti prima della scadenza
+
+      if (refreshTime > 0) {
+        console.log(`Token refresh scheduled in ${Math.floor(refreshTime / 1000)} seconds`);
+
+        if (this.refreshTimer) {
+          clearTimeout(this.refreshTimer);
+        }
+        this.refreshTimer = setTimeout(() => {
+          console.log('Auto-refreshing token...');
+          this.refreshToken().subscribe();
+        }, refreshTime);
+      } else {
+        // Token già scaduto o scade a breve, rinnova immediatamente
+        console.log('Token expired or expiring soon, refreshing immediately');
+        this.refreshToken().subscribe();
+      }
+    } catch (error) {
+      console.error('Error scheduling token refresh:', error);
+    }
   }
 
   /**
@@ -144,7 +223,7 @@ export class AuthService {
   }
 
   register(): void {
-    const keycloakRegisterUrl = 'http://localhost:8081/realms/yahtzee-realm/protocol/openid-connect/registrations';
+    const keycloakRegisterUrl = `${this.keycloakBaseUrl}/realms/yahtzee-realm/protocol/openid-connect/registrations`;
     const clientId = 'yahtzee-fe-client';
     const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback');
     const responseType = 'code';
@@ -163,13 +242,5 @@ export class AuthService {
     localStorage.removeItem('access_token');
     localStorage.removeItem('id_token'); // Rimuovi anche l'ID token
     this.tokenSubject.next(null);
-  }
-
-  /**
-   * Logout silenzioso (solo locale, senza redirect)
-   */
-  silentLogout(): void {
-    console.log('Silent logout - clearing local auth only');
-    this.clearLocalAuth()
   }
 }
