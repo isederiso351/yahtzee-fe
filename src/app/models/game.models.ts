@@ -21,7 +21,7 @@ export interface GameInfoDTO {
   bet: number;
   currentRoll?: number;
   currentDiceResults?: {[username:string]:number};
-  activePlayersInRound?: string[];
+  activePlayers?: string[];
   winner?: string;
 }
 

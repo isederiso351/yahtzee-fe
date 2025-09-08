@@ -211,12 +211,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     this.router.navigate(['/']);
   }
 
-  getEmptySlots(): number[] {
-    if (!this.game) return [];
-    const emptyCount = this.game.max_players - this.game.users.length;
-    return Array(emptyCount).fill(0);
-  }
-
   private showNotification(message: string): void {
     console.log('Notification:', message);
 
@@ -240,7 +234,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
    * Controlla se un giocatore è tra quelli attivi
    */
   isPlayerActive(playerName: string): boolean {
-    return this.game?.activePlayersInRound?.includes(playerName) ?? true;
+    console.log("activePlayers",this.game?.activePlayers)
+    if(!this.game?.activePlayers){
+      return true;
+    }
+    return this.game!.activePlayers!.includes(playerName);
   }
 
   protected readonly GameStatus = GameStatus;
