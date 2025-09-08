@@ -36,6 +36,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     bet: 0
   };
 
+  userName: string = "";
   userCredit: number = 0;
 
   // Gestione sottoscrizioni
@@ -53,6 +54,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.loadAvailableGames(0, true);
     this.initializeWebSocket();
     this.subscribeToWebSocketEvents();
+    this.userName=this.authService.getCurrentUserName();
     this.loadUserCredit();
   }
 
@@ -227,6 +229,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   canJoinGame(game: GameInfoDTO): boolean {
-    return game.users.length < game.max_players && this.userCredit >= game.bet;
+    return game.users.includes(this.userName) || (game.users.length < game.max_players && this.userCredit >= game.bet);
   }
 }

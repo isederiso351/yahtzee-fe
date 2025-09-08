@@ -205,26 +205,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Lascia la partita
-   */
-  leaveGame(): void {
-    this.loading = true;
-
-    const leaveSub = this.gameService.leaveGame(this.gameId).subscribe({
-      next: () => {
-        console.log('Left game successfully');
-        this.router.navigate(['/']);
-      },
-      error: (error) => {
-        console.error('Error leaving game:', error);
-        this.loading = false;
-      }
-    });
-
-    this.subscriptions.push(leaveSub);
-  }
-
-  /**
    * Torna alla home
    */
   goHome(): void {
