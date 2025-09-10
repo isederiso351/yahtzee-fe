@@ -29,11 +29,6 @@ export class GameService {
     return this.http.post<void>(`${this.baseUrl}/${gameId}/join`, {});
   }
 
-
-  leaveGame(gameId: number): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/${gameId}/leave`, {});
-  }
-
   startGame(gameId: number): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${gameId}/start`, {});
   }
